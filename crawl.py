@@ -1,11 +1,13 @@
 from bs4 import BeautifulSoup
 import requests
+import os
 #base_url = "https://www.levi.in/new_arrivals"
 #page = requests.get(base_url)
 #soup = BeautifulSoup(page.content, 'html.parser')
 
 #https://www.levi.in/new_arrivals?start=0&sz=12&format=page-element
 base_url = "https://www.levi.in/new_arrivals"
+save_dir = "./temp"
 
 
 def create_soup(url,iter):
@@ -20,9 +22,25 @@ def retrieve_all_products(soup):
 	print(len(all_products))
 	return all_products
 
+def save_attributes(img, name, desc):
+	file = os.open("w", save_dir + name + ".txt")
+	os.write(file, name + "\n" + desc)
+	os.close(file)
+	file = os.open("w", save_dir + name + ".jpg")
+	os.write(file, img)
+	os.close(file)
+
 def productpage_crawl(product_page):
 	page = requests.get(product_page)
 	soup = BeautifulSoup(page.content,'html.parser')
+
+	link = soup.find("div", class_="product_primary_image").find("img").src
+	img = requests.get(link)
+
+	name = soup.find("h1", class_="product-name").text
+	desc = soup.find("td", class_="product_details").find("div", class_="tab_content").text
+
+	save_attributes(img, name, desc);
 
 if __name__=='__main__':
 	pages = 10
