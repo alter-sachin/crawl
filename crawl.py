@@ -77,7 +77,7 @@ def productpage_crawl(product_page):
 		product_num = ""
 	temp = soup.find("div", class_="product-price").find("span", class_="pricevalue")
 	if(type(temp) == bs4.element.Tag):
-		product_price = temp.text[5:]
+		product_price = temp.text[1:]
 	else:
 		product_price = ""
 
