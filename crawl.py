@@ -13,24 +13,25 @@ import bs4
 
 #https://www.levi.in/new_arrivals?start=0&sz=12&format=page-element
 base_url = "https://www.levi.in/new_arrivals"
-url_list = 	[	"http://www.levi.in/"
-			"http://www.levi.in/"
-			"http://www.levi.in/"
-			"http://www.levi.in/"
+url_list = 	[	"http://www.levi.in/",
+			"http://www.levi.in/",
+			"http://www.levi.in/",
+			"http://www.levi.in/",
 		]
 save_dir = "./temp"
 
 OUTPUT_FILE = 'output.json'
 
 class crawl_out():
-	def __init__(self, img_main, imgs, num, price, colors, desc, category, fit_descs, material_descs):
+	def __init__(self, name, img_main, imgs, num, price, colors, desc, categories, fit_descs, material_descs):
+		self.name = name
 		self.img_main = img_main
 		self.imgs = imgs
 		self.num = num
 		self.price = price
 		self.colors = colors
 		self.desc = desc
-		self.category = category
+		self.categories = categories
 		self.fit_descs = fit_descs
 		self.material_descs = material_descs
 
@@ -43,7 +44,6 @@ def create_soup(url,iter):
 
 def retrieve_all_products(soup):
 	all_products = soup.find_all('li',class_='grid-tile')
-	print(len(all_products))
 	return all_products
 
 def productpage_crawl(product_page):
@@ -52,7 +52,7 @@ def productpage_crawl(product_page):
 
 	temp = soup.find("h1", class_="product-name")
 	if(type(temp) == bs4.element.Tag):
-		name = temp
+		name = temp.text
 	else:
 		name = ""
 
@@ -70,17 +70,16 @@ def productpage_crawl(product_page):
 		if(type(temp) == bs4.element.Tag):
 			imgs.append(temp.get("src"))
 
-	product_details = soup.find("div", class_="item-price-rating")
-	temp = product_details.find("span", class_="item-number")
+	temp = soup.find("span", class_="item-number")
 	if(type(temp) == bs4.element.Tag):
 		product_num = temp.text
 	else:
 		product_num = ""
 	temp = soup.find("div", class_="product-price").find("span", class_="pricevalue")
 	if(type(temp) == bs4.element.Tag):
-		product_price = temp.text
+		product_price = temp.text[5:]
 	else:
-		product_num = ""
+		product_price = ""
 
 	colors_list = soup.find("ul", class_="swatches").find_all("li", class_="selectable")
 
@@ -89,9 +88,14 @@ def productpage_crawl(product_page):
 	for color in colors_list:
 		temp = color.find("a")
 		if(type(temp) == bs4.element.Tag):
-			colors.append(temp.get("title"))
+			colors.append(temp.get("title")[14:])
 
-	category = "work in progress"
+	temp = soup.find("meta", attrs={"name":"keywords"})
+	if(type(temp) == bs4.element.Tag):
+		categories = temp.get('content').split(',')
+
+	for i in range(len(categories)):
+		categories[i] = categories[i].strip()
 
 	temp = soup.find("td", class_="product-details").find("div", class_="tab-content")
 	if(type(temp) == bs4.element.Tag):
@@ -111,38 +115,49 @@ def productpage_crawl(product_page):
 		if(type(material) == bs4.element.Tag):
 			material_descs.append(material.text)
 
-	return crawl_out(img1, imgs, product_num, product_price, colors, desc, fit_descs, material_descs)
+	return crawl_out(name, img1, imgs, product_num, product_price, colors, desc, categories, fit_descs, material_descs)
 
 if __name__=='__main__':
 
 	out_file = open(OUTPUT_FILE, "w")
 
-	pages = 10
+	pages = 2
 	for x in range(0,pages):
 		soup = create_soup(base_url,x)
 		products = retrieve_all_products(soup)
-		#print(products)
-		
+		print("Gathering batch: ", len(products))
+
 		product_details = []
 		for product in products:
 			#new_soup = BeautifulSoup(product,'html.parser')
 			#print(product)
+			img_url = product.find("a", class_="name-link")
+			if(type(img_url) != bs4.element.Tag):
+				print("Skipping an image. No url found")
+				continue
+
 			product_page = (base_url + img_url['href'])
 			out = productpage_crawl(product_page)
 
-			str_save = json.dumps(	{
-					'name' : product_name,
-					'price' : out.price,
-					'item_num' : out.num,
-					'colors' : out.colors,
-					'desc' : out.desc,
-					'image-main' : out.img_main,
-					'image-others' : out.imgs,
-					'category' : out.category,
-					'fit-info' : out.fit_descs,
-					'material-info' : out.material_descs
-				}, indent = 4)
+			if len(out.categories) == 0 or out.categories[0] == "" or out.name == "":
+				print("Error in a crawl operation")
+			else:
+				print("Writing ", out.name, " in category ", out.categories[0],
+					" and ", out.categories[1])
 
-			out_file.write(str_save)
+			for category in out.categories[0:1]:
+				str_save = json.dumps(	{
+						'category' : category,
+						'name' : out.name,
+						'price' : out.price,
+						'item_num' : out.num,
+						'colors' : out.colors,
+						'desc' : out.desc,
+						'image-main' : out.img_main,
+						'image-others' : out.imgs,
+						'fit-info' : out.fit_descs,
+						'material-info' : out.material_descs
+					}, indent = 4)
+				out_file.write(str_save)
 
 	out_file.close()
