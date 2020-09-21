@@ -13,18 +13,24 @@ import bs4
 
 #https://www.levi.in/new_arrivals?start=0&sz=12&format=page-element
 base_url = "https://www.levi.in/new_arrivals"
+url_list = 	[	"http://www.levi.in/"
+			"http://www.levi.in/"
+			"http://www.levi.in/"
+			"http://www.levi.in/"
+		]
 save_dir = "./temp"
 
-OUTPUT_FILE = 'output.txt'
+OUTPUT_FILE = 'output.json'
 
 class crawl_out():
-	def __init__(self, img_main, imgs, num, price, colors, desc, fit_descs, material_descs):
+	def __init__(self, img_main, imgs, num, price, colors, desc, category, fit_descs, material_descs):
 		self.img_main = img_main
 		self.imgs = imgs
 		self.num = num
 		self.price = price
 		self.colors = colors
 		self.desc = desc
+		self.category = category
 		self.fit_descs = fit_descs
 		self.material_descs = material_descs
 
@@ -44,7 +50,17 @@ def productpage_crawl(product_page):
 	page = requests.get(product_page)
 	soup = bs4.BeautifulSoup(page.content,'html.parser')
 
-	img1 = soup.find("img", class_="product-image").get("src")
+	temp = soup.find("h1", class_="product-name")
+	if(type(temp) == bs4.element.Tag):
+		name = temp
+	else:
+		name = ""
+
+	temp = soup.find("img", class_="product-image")
+	if(type(temp) == bs4.element.Tag):
+		img1 = temp.get("src")
+	else:
+		img1 = ""
 	imgs_rest = soup.find_all("li", class_="product-image")
 
 	imgs = list();
@@ -59,12 +75,12 @@ def productpage_crawl(product_page):
 	if(type(temp) == bs4.element.Tag):
 		product_num = temp.text
 	else:
-		product_num = ''
+		product_num = ""
 	temp = soup.find("div", class_="product-price").find("span", class_="pricevalue")
 	if(type(temp) == bs4.element.Tag):
 		product_price = temp.text
 	else:
-		product_num = ''
+		product_num = ""
 
 	colors_list = soup.find("ul", class_="swatches").find_all("li", class_="selectable")
 
@@ -74,6 +90,8 @@ def productpage_crawl(product_page):
 		temp = color.find("a")
 		if(type(temp) == bs4.element.Tag):
 			colors.append(temp.get("title"))
+
+	category = "work in progress"
 
 	temp = soup.find("td", class_="product-details").find("div", class_="tab-content")
 	if(type(temp) == bs4.element.Tag):
@@ -109,11 +127,6 @@ if __name__=='__main__':
 		for product in products:
 			#new_soup = BeautifulSoup(product,'html.parser')
 			#print(product)
-			product_name = product.find("div",class_="product-name").text
-			product_price = product.find("div",class_="product-pricing")
-			product_img = product.find("div",class_="product-image")
-			img_url =  product_img.find('a',href=True)
-
 			product_page = (base_url + img_url['href'])
 			out = productpage_crawl(product_page)
 
@@ -125,9 +138,10 @@ if __name__=='__main__':
 					'desc' : out.desc,
 					'image-main' : out.img_main,
 					'image-others' : out.imgs,
+					'category' : out.category,
 					'fit-info' : out.fit_descs,
 					'material-info' : out.material_descs
-				})
+				}, indent = 4)
 
 			out_file.write(str_save)
 
